@@ -1,6 +1,4 @@
 require("dotenv").config();
-
-
 const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
@@ -9,30 +7,23 @@ const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
 const OpenAI = require("openai");
 
-
 const User = require("./models/User");
 const Route = require("./models/Route");
-
 
 const app = express();
 
 app.use(express.json({ limit: "2mb" }));
-
 app.use(express.urlencoded({ extended: true }));
-
 app.use(cookieParser());
 
 app.use(
   cors({
-    origin: [
-      'http://localhost:3000',
-      'https://afeka-travel-planner-2026-1.onrender.com'
-    ],
+    origin: process.env.CLIENT_ORIGIN,
     credentials: true,
   })
 );
 
-
+// MongoDB
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB connected"))
@@ -46,11 +37,14 @@ const groq = new OpenAI({
 });
 
 // ---------- JWT helpers ----------
-
+// חילקנו את מערכת ההזדהות (Authentication) לשני חלקים מטעמי אבטחה: 
+// Access Token שפג תוקף מהר מאוד (15 דקות) כדי למזער נזקים במקרה של גניבה,
+//  ו-Refresh Token שתקף לחודש ונועד לחדש את האסימון הקצר מאחורי הקלעים בלי להטריד את המשתמש.
+//  את שניהם אנחנו שומרים בעוגיות מוגנות מסוג httpOnly כדי למנוע התקפות של גניבת אסימונים.
 
 function signAccessToken(payload) {
   return jwt.sign(payload, process.env.JWT_ACCESS_SECRET, {
-    expiresIn: process.env.ACCESS_EXPIRES || '1d',
+    expiresIn: process.env.ACCESS_EXPIRES,
   });
 }
 
@@ -63,22 +57,20 @@ function signRefreshToken(payload) {
 function setAuthCookies(res, accessToken, refreshToken) {
   res.cookie("access_token", accessToken, {
     httpOnly: true,
-    sameSite: "none",
-    secure: true,
+    sameSite: "lax",
+    secure: false,
     maxAge: 1000 * 60 * 60 * 24,
   });
 
   res.cookie("refresh_token", refreshToken, {
     httpOnly: true,
-    sameSite: "none",
-    secure: true,
+    sameSite: "lax",
+    secure: false,
     maxAge: 1000 * 60 * 60 * 24 * 30,
   });
 }
 
-// ---------- Middleware ----------
-
-
+// ---------- Middleware לאימות הרשאות ----------
 function requireAuth(req, res, next) {
   const token = req.cookies.access_token;
   if (!token) return res.status(401).json({ error: "Missing token" });
@@ -91,9 +83,7 @@ function requireAuth(req, res, next) {
   }
 }
 
-// ---------- AUTH ----------
-
-
+// ---------- AUTH נתיבי הרשמה ----------
 app.post("/auth/register", async (req, res) => {
   const { email, password, name } = req.body;
   if (!email || !password || !name) return res.status(400).json({ error: "Missing fields" });
@@ -101,9 +91,8 @@ app.post("/auth/register", async (req, res) => {
   if (exists) return res.status(409).json({ error: "User exists" });
   const passHash = await bcrypt.hash(password, 12);
   await User.create({ email, name, passHash });
-  res.json({ ok: true, accessToken });
+  res.json({ ok: true });
 });
-
 
 app.post("/auth/login", async (req, res) => {
   const { email, password } = req.body;
@@ -112,28 +101,24 @@ app.post("/auth/login", async (req, res) => {
   const valid = await bcrypt.compare(password, user.passHash);
   if (!valid) return res.status(401).json({ error: "Bad credentials" });
 
-
   const payload = {
     email: user.email,
     presenters: ["Maayan Shani", "Rotem Gilboa"],
   };
 
-
   const accessToken = signAccessToken(payload);
   const refreshToken = signRefreshToken(payload);
-
   setAuthCookies(res, accessToken, refreshToken);
   res.json({ ok: true });
 });
 
-// logout
 app.post("/auth/logout", (req, res) => {
-  res.clearCookie("access_token", { sameSite: 'none', secure: true });
+  res.clearCookie("access_token");
   res.clearCookie("refresh_token");
   res.json({ ok: true });
 });
 
-// refresh token
+
 app.post("/auth/refresh", async (req, res) => {
   const refreshToken = req.cookies.refresh_token;
   if (!refreshToken) return res.status(401).json({ error: "Missing refresh token" });
@@ -159,14 +144,11 @@ app.post("/auth/refresh", async (req, res) => {
   }
 });
 
-
 app.get("/me", requireAuth, (req, res) => {
   res.json({ user: req.user });
 });
 
 // ---------- LLM ROUTE ----------
-
-
 app.post("/ai/trip", requireAuth, async (req, res) => {
   try {
     const { city, tripType, days, daysPlan } = req.body;
@@ -190,7 +172,6 @@ Return JSON ONLY in this format:
 ]
 }
 `;
-
 
     const response = await groq.chat.completions.create({
       model: "llama-3.1-8b-instant",
@@ -227,12 +208,10 @@ app.post("/routes", requireAuth, async (req, res) => {
   }
 });
 
-
 app.get("/routes", requireAuth, async (req, res) => {
   const routes = await Route.find({ userEmail: req.user.email }).sort({ createdAt: -1 });
   res.json(routes);
 });
-
 
 app.listen(4000, () => {
   console.log("Server running on http://localhost:4000");
