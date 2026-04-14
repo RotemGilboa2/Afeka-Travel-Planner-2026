@@ -50,7 +50,7 @@ const groq = new OpenAI({
 
 function signAccessToken(payload) {
   return jwt.sign(payload, process.env.JWT_ACCESS_SECRET, {
-    expiresIn: process.env.ACCESS_EXPIRES,
+    expiresIn: process.env.ACCESS_EXPIRES || '1d',
   });
 }
 
@@ -63,15 +63,15 @@ function signRefreshToken(payload) {
 function setAuthCookies(res, accessToken, refreshToken) {
   res.cookie("access_token", accessToken, {
     httpOnly: true,
-    sameSite: "lax",
-    secure: false,
+    sameSite: "none",
+    secure: true,
     maxAge: 1000 * 60 * 60 * 24,
   });
 
   res.cookie("refresh_token", refreshToken, {
     httpOnly: true,
-    sameSite: "lax",
-    secure: false,
+    sameSite: "none",
+    secure: true,
     maxAge: 1000 * 60 * 60 * 24 * 30,
   });
 }
@@ -128,7 +128,7 @@ app.post("/auth/login", async (req, res) => {
 
 // logout
 app.post("/auth/logout", (req, res) => {
-  res.clearCookie("access_token");
+  res.clearCookie("access_token", { sameSite: 'none', secure: true });
   res.clearCookie("refresh_token");
   res.json({ ok: true });
 });
