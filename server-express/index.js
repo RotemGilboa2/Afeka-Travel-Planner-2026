@@ -101,7 +101,7 @@ app.post("/auth/register", async (req, res) => {
   if (exists) return res.status(409).json({ error: "User exists" });
   const passHash = await bcrypt.hash(password, 12);
   await User.create({ email, name, passHash });
-  res.json({ ok: true });
+  res.json({ ok: true, accessToken });
 });
 
 

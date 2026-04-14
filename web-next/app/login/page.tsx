@@ -1,11 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+
 
 export default function LoginPage() {
-  const router = useRouter();
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -31,8 +29,16 @@ export default function LoginPage() {
       if (res.ok) {
         alert("Login Success 🎉");
 
-        router.replace("/plan");
-        router.refresh();
+
+        if (data.accessToken) {
+          document.cookie = `access_token=${data.accessToken}; path=/; max-age=86400`;
+        }
+        if (data.refreshToken) {
+          document.cookie = `refresh_token=${data.refreshToken}; path=/; max-age=2592000`;
+        }
+
+        window.location.href = "/plan";
+
       } else {
         alert(data.error || "Login failed");
       }
