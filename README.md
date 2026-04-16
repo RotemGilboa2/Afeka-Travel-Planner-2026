@@ -31,6 +31,30 @@ The system generates routes, suggests attractions, shows weather forecasts, and 
 
 ---
 
+## 🎥 Project Demo Video
+
+Watch a full demonstration of the *Afeka Travel Planner 2026* in action on YouTube:
+
+<div align="center">
+  <a href="https://www.youtube.com/watch?v=fQ_-UT3h9ZI">
+    <img src="https://img.shields.io/badge/Watch_Demo_Video-YouTube-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="Watch Demo on YouTube" />
+  </a>
+</div>
+
+---
+
+## 📽️ Project Presentation
+
+Check out our full project presentation for a deep dive into the system's design and features:
+
+<div align="center">
+  <a href="Afeka-Travel-Planner-2026.pdf">
+    <img src="https://img.shields.io/badge/View_Presentation-PDF-red?style=for-the-badge&logo=adobe-acrobat-reader&logoColor=white" alt="View PDF Presentation" />
+  </a>
+</div>
+
+---
+
 ## ✨ Features
 
 ### 🚴 Smart Route Generation
